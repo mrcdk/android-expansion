@@ -1,7 +1,13 @@
 apply plugin: 'android-library'
 
+buildscript {
+    repositories {
+        jcenter()
+    }
+}
+
 android {
-    compileSdkVersion 26
+    compileSdkVersion 27
 
     defaultConfig {
         targetSdkVersion ::ANDROID_TARGET_SDK_VERSION::
@@ -18,6 +24,7 @@ android {
 }
 
 dependencies {
-    implementation project(':extension-api')
-    implementation project(':downloader_library')
+    implementation project(':deps:extension-api')
+    implementation project(':deps:downloader_library')
+    implementation 'pub.devrel:easypermissions:2.0.1'
 }

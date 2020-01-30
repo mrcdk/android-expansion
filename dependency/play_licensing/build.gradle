@@ -10,7 +10,7 @@ buildscript {
 }
 
 android {
-    compileSdkVersion 24
+    compileSdkVersion 27
     useLibrary  'org.apache.http.legacy'
     
     defaultConfig {

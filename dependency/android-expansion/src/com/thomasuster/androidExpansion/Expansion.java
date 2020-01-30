@@ -4,6 +4,7 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
 import org.haxe.extension.Extension;
+import org.haxe.lime.HaxeObject;
 import android.util.Log;
 import java.io.File;
 import android.os.Environment;
@@ -14,18 +15,37 @@ import com.google.android.vending.expansion.downloader.IStub;
 import com.google.android.vending.expansion.downloader.DownloaderClientMarshaller;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ActivityInfo;
 
-public class Expansion extends Extension {
+import pub.devrel.easypermissions.AfterPermissionGranted;
+import pub.devrel.easypermissions.EasyPermissions;
+import pub.devrel.easypermissions.AppSettingsDialog;
+
+import android.Manifest;
+
+import java.util.List;
+import java.util.Arrays;
+
+public class Expansion extends Extension implements EasyPermissions.PermissionCallbacks {
 
     public static String BASE64_PUBLIC_KEY;
     public static byte[] SALT;
+
+    private static final String[] EXTERNAL_STORAGE_PERMISSIONS =
+        {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+    private static final int RC_EXTERNAL_STORAGE_PERM = 100;
 
     private static IStub mDownloaderClientStub;
     private static DownloaderClientImpl downloaderClient;
     private static int version;
     private static long bytes;
 
-    public static void init() {}
+    private static HaxeObject cbObj;
+
+    public static void init(final HaxeObject obj) {
+        cbObj = obj;
+    }
 
     public static void setKey(String v) {
         BASE64_PUBLIC_KEY = v;
@@ -98,6 +118,8 @@ public class Expansion extends Extension {
         if (mDownloaderClientStub != null) {
             mDownloaderClientStub.connect(mainContext);
         }
+
+        mainActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
     }
 
 
@@ -165,4 +187,80 @@ public class Expansion extends Extension {
             return 0;
         return downloaderClient.progress.mOverallTotal;
     }
+
+    @Override 
+    public boolean LIMEonRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        boolean r = super.LIMEonRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // EasyPermissions handles the request result.
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+
+        return r;
+    }
+
+    @Override 
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        LIMEonRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    @Override
+    public void onPermissionsGranted(int requestCode, List<String> list) {
+        Log.v("PERMISSIONS", "Permissions granted");
+        mainActivity.runOnUiThread(new Runnable() {
+            public void run() {
+                Log.v("PERMISSIONS", "Permissions granted on thread, calling haxe");
+                cbObj.call0("onPermissionsGranted");
+            }
+        });
+    }
+
+    @Override
+    public void onPermissionsDenied(int requestCode, List<String> list) {
+        Log.v("PERMISSIONS", "Permissions denied");
+        if (EasyPermissions.somePermissionPermanentlyDenied(mainActivity, Arrays.asList(EXTERNAL_STORAGE_PERMISSIONS))) {
+            new AppSettingsDialog.Builder(mainActivity).build().show();
+        } else {
+            mainActivity.runOnUiThread(new Runnable() {
+                public void run() {
+                    Log.v("PERMISSIONS", "Permissions denied on thread, calling haxe");
+                    cbObj.call0("onPermissionsDenied");
+                }
+            });
+        }
+    }
+
+    @Override
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE) {
+            mainActivity.runOnUiThread(new Runnable() {
+                public void run() {
+                    Log.v("PERMISSIONS", "Permissions denied on thread, calling haxe");
+                    cbObj.call0("onPermissionsDenied");
+                }
+            });
+        }
+        return true;
+    }
+
+    public static int hasExternalStoragePermissions() {
+        return EasyPermissions.hasPermissions(mainActivity, EXTERNAL_STORAGE_PERMISSIONS) ? 0 : 1;
+    }
+    
+    @AfterPermissionGranted(RC_EXTERNAL_STORAGE_PERM)
+    public static void askExternalStoragePermissions() {
+        if (hasExternalStoragePermissions() == 1) {
+            if (EasyPermissions.somePermissionPermanentlyDenied(mainActivity, Arrays.asList(EXTERNAL_STORAGE_PERMISSIONS))) {
+                new AppSettingsDialog.Builder(mainActivity).build().show();
+            } else {
+                // Ask for one permission
+                EasyPermissions.requestPermissions(
+                        mainActivity,
+                        //getString(R.string.rationale_read_write_storage),
+                        "Requesting external storage permissions",
+                        RC_EXTERNAL_STORAGE_PERM,
+                        EXTERNAL_STORAGE_PERMISSIONS);
+            }
+        }
+    }
+
 }

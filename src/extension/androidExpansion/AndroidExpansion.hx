@@ -1,14 +1,14 @@
 package extension.androidExpansion;
 
 #if android
-import openfl.utils.JNI;
+import lime.system.JNI;
 #end
 
 class AndroidExpansion {
 
     public static var version:Int;
 
-    static var _init:Void->Void;
+    static var _init:Dynamic;
     static var _expansionFilesDelivered:Dynamic;
     static var _startDownloadServiceIfRequired:Dynamic;
     static var _getMainFile:Dynamic;
@@ -19,10 +19,14 @@ class AndroidExpansion {
     static var _setBytes:Dynamic;
     static var _setKey:Dynamic;
     static var _setSalt:Dynamic;
+    static var _checkPermissions:Dynamic;
+    static var _hasExternalStoragePermissions:Dynamic;
+    static var _askExternalStoragePermissions:Dynamic;
+    static var _overallTotal:Dynamic;
 
-    public static function init():Void {
+    public static function init(obj:Dynamic):Void {
         initJNI();
-        _init();
+        _init(obj);
     }
 
     public static function setVersion(v:Int):Void {
@@ -78,10 +82,25 @@ class AndroidExpansion {
         return _getLocalStoragePath();
     }
 
+    public static function askExternalStoragePermissions():Void {
+        initJNI();
+        _askExternalStoragePermissions();
+    }
+
+    public static function hasExternalStoragePermissions():Bool {
+        initJNI();
+        return _hasExternalStoragePermissions() == 0 ? true : false;
+    }
+
+    public static function getOverallTotal():Int {
+        initJNI();
+        return _overallTotal();
+    }
+
     private static function initJNI():Void {
         if(_init == null) {
             #if android
-            _init = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "init", "()V");
+            _init = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "init", "(Lorg/haxe/lime/HaxeObject;)V");
             _expansionFilesDelivered = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "expansionFilesDelivered", "()I");
             _startDownloadServiceIfRequired = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "startDownloadServiceIfRequired", "()I");
             _getMainFile = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "getMainFile", "()Ljava/lang/String;");
@@ -94,6 +113,10 @@ class AndroidExpansion {
             _setBytes = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setBytes", "(J)V");
             _setKey = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setKey", "(Ljava/lang/String;)V");
             _setSalt = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setSalt", "([B)V");
+
+            _askExternalStoragePermissions = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "askExternalStoragePermissions", "()V");
+            _hasExternalStoragePermissions = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "hasExternalStoragePermissions", "()I");
+            _overallTotal = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "overallTotal", "()J");
             #end
         }
     }
