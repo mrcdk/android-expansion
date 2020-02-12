@@ -82,9 +82,9 @@ class AndroidExpansion {
         return _getLocalStoragePath();
     }
 
-    public static function askExternalStoragePermissions():Void {
+    public static function askExternalStoragePermissions(rationale:String):Void {
         initJNI();
-        _askExternalStoragePermissions();
+        _askExternalStoragePermissions(rationale);
     }
 
     public static function hasExternalStoragePermissions():Bool {
@@ -114,7 +114,7 @@ class AndroidExpansion {
             _setKey = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setKey", "(Ljava/lang/String;)V");
             _setSalt = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setSalt", "([B)V");
 
-            _askExternalStoragePermissions = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "askExternalStoragePermissions", "()V");
+            _askExternalStoragePermissions = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "askExternalStoragePermissions", "(Ljava/lang/String;)V");
             _hasExternalStoragePermissions = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "hasExternalStoragePermissions", "()I");
             _overallTotal = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "overallTotal", "()J");
             #end

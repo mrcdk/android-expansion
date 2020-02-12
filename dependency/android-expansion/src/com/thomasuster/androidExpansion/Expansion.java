@@ -20,13 +20,14 @@ import android.content.pm.ActivityInfo;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 import pub.devrel.easypermissions.AppSettingsDialog;
+import pub.devrel.easypermissions.PermissionRequest;
 
 import android.Manifest;
 
 import java.util.List;
 import java.util.Arrays;
 
-public class Expansion extends Extension implements EasyPermissions.PermissionCallbacks {
+public class Expansion extends Extension implements EasyPermissions.PermissionCallbacks,EasyPermissions.RationaleCallbacks {
 
     public static String BASE64_PUBLIC_KEY;
     public static byte[] SALT;
@@ -230,6 +231,21 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
     }
 
     @Override
+    public void onRationaleAccepted(int requestCode) {
+        
+    }
+    
+    @Override
+    public void onRationaleDenied(int requestCode) {
+        mainActivity.runOnUiThread(new Runnable() {
+            public void run() {
+                Log.v("PERMISSIONS", "Permissions denied on thread, calling haxe");
+                cbObj.call0("onPermissionsDenied");
+            }
+        });
+    }
+
+    @Override
     public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE) {
             mainActivity.runOnUiThread(new Runnable() {
@@ -247,19 +263,32 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
     }
     
     @AfterPermissionGranted(RC_EXTERNAL_STORAGE_PERM)
-    public static void askExternalStoragePermissions() {
+    public static void askExternalStoragePermissions(String rationale) {
         if (hasExternalStoragePermissions() == 1) {
-            if (EasyPermissions.somePermissionPermanentlyDenied(mainActivity, Arrays.asList(EXTERNAL_STORAGE_PERMISSIONS))) {
-                new AppSettingsDialog.Builder(mainActivity).build().show();
-            } else {
-                // Ask for one permission
-                EasyPermissions.requestPermissions(
-                        mainActivity,
-                        //getString(R.string.rationale_read_write_storage),
-                        "Requesting external storage permissions",
-                        RC_EXTERNAL_STORAGE_PERM,
-                        EXTERNAL_STORAGE_PERMISSIONS);
+
+            /*
+
+            // Ask for one permission
+            EasyPermissions.requestPermissions(
+                    mainActivity,
+                    rationale,
+                    RC_EXTERNAL_STORAGE_PERM,
+                    EXTERNAL_STORAGE_PERMISSIONS);
+
+            */
+
+            int theme = android.R.style.Theme_DeviceDefault_Dialog;
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1){
+                theme = android.R.style.Theme_DeviceDefault_Dialog_Alert;
             }
+
+            EasyPermissions.requestPermissions(
+                new PermissionRequest.Builder(mainActivity, RC_EXTERNAL_STORAGE_PERM, EXTERNAL_STORAGE_PERMISSIONS)
+                        .setRationale(rationale)
+                        .setTheme(theme)
+                        .build());
+
         }
     }
 
