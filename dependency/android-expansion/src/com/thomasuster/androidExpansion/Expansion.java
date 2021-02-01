@@ -263,6 +263,10 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
     }
     
     @AfterPermissionGranted(RC_EXTERNAL_STORAGE_PERM)
+    public static void askExternalStoragePermissionsCB() {
+        askExternalStoragePermissions("Allow the following permissions to be able to install the game.");
+    }
+
     public static void askExternalStoragePermissions(String rationale) {
         if (hasExternalStoragePermissions() == 1) {
 
