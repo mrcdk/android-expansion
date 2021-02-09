@@ -16,6 +16,9 @@ import com.google.android.vending.expansion.downloader.DownloaderClientMarshalle
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ActivityInfo;
+import android.os.StatFs;
+
+import java.util.regex.*; 
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
@@ -40,12 +43,20 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
     private static IStub mDownloaderClientStub;
     private static DownloaderClientImpl downloaderClient;
     private static int version;
+    private static int spaceNeeded;
     private static long bytes;
 
     private static HaxeObject cbObj;
 
+    private static Pattern obbnamePattern = Pattern.compile("^([main|patch]+).([0-9]+).([\\w.]+).obb$");
+
     public static void init(final HaxeObject obj) {
         cbObj = obj;
+
+        Vector<OBBFileInfo> obbs = findObbFiles();
+        for(OBBFileInfo obb : obbs) {
+            System.out.println("OBB found in " + obb.fullpath);
+        }
     }
 
     public static void setKey(String v) {
@@ -58,6 +69,10 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
 
     public static void setVersion(int v) {
         version = v;
+    }
+
+    public static void setSpaceNeeded(int v) {
+        spaceNeeded = v;
     }
 
     public static int getAPKVersion() {
@@ -76,7 +91,6 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
 
     public static int expansionFilesDelivered() {
         String fileName = Helpers.getExpansionAPKFileName(mainContext, true,version);
-        System.out.println("Checking " + fileName);
         if (Helpers.doesFileExist(mainContext, fileName, bytes, false))
             return 1;
         return 0;
@@ -137,12 +151,83 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
 
     private final static String EXP_PATH = "/Android/obb/";
 
+    // Checks if a volume containing external storage is available
+    // for read and write.
+    private static boolean isExternalStorageWritable() {
+        return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
+    }
+
+    // Checks if a volume containing external storage is available to at least read.
+    private static boolean isExternalStorageReadable() {
+        return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) ||
+            Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY);
+    }
+
+    static Vector<OBBFileInfo> findObbFiles() {
+        String packageName = mainContext.getPackageName();
+        Vector<OBBFileInfo> result = new Vector<OBBFileInfo>();
+        File[] dirs = mainContext.getObbDirs();
+        for(File dir : dirs) {
+            if(dir.exists()) {
+                for(File file : dir.listFiles()) {
+                    Matcher matcher = obbnamePattern.matcher(file.getName());
+                    if(!matcher.matches()) continue;
+                    
+                    if(matcher.group(3).equals(packageName)) {
+                        OBBFileInfo info = new OBBFileInfo();
+                        info.isMain = matcher.group(1).equals("main");
+                        info.version = Integer.parseInt(matcher.group(2));
+                        info.packageName = packageName;
+                        info.fullpath = dir + File.separator + matcher.group(0);
+                        result.add(info);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static String findBestPathToUnzip() {
+        File[] dirs = mainContext.getExternalFilesDirs(null);
+        long candidate_size = 0;
+        String candidate = null;
+        for(File dir : dirs) {
+            // Skip removable storage or read-only storage
+            if(Environment.isExternalStorageRemovable(dir) || Environment.getExternalStorageState(dir).equals(Environment.MEDIA_MOUNTED_READ_ONLY)) {
+                continue;
+            }
+            // if the directory is emulated, we use the internal private files dir because it's in the same partition
+            if(Environment.isExternalStorageEmulated(dir)) {
+                dir = mainContext.getFilesDir();
+            }
+
+            // if the folder has an assets folder then we can expect that this is the correct folder
+            File assetsFolder = new File(dir, "assets");
+            if(assetsFolder.isDirectory()) {
+                candidate = dir.toString();
+                break;
+            }
+            
+            // if we haven't found a candidate yet, check if there's enough space to unzip the whole file in the current directory
+            StatFs stat = new StatFs(dir.toString());
+            long available = stat.getAvailableBytes();
+            if(available > spaceNeeded && available > candidate_size) {
+                candidate = dir.toString();
+                candidate_size = available;
+                System.out.println("Found candidate to unzip here: " + candidate + " with an available space of " + available);
+            }
+        }
+
+        return candidate;
+    }
+
+
     static String[] getAPKExpansionFiles(Context ctx, int mainVersion,
                                          int patchVersion) {
         String packageName = ctx.getPackageName();
         Vector<String> ret = new Vector<String>();
-        if (Environment.getExternalStorageState()
-                .equals(Environment.MEDIA_MOUNTED)) {
+        if (isExternalStorageWritable()) {
             File root = Environment.getExternalStorageDirectory();
             File expPath = new File(root.toString() + EXP_PATH + packageName);
 
@@ -177,6 +262,7 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
 
     public static String getLocalStoragePath ()
     {
+        //return Environment.getExternalFilesDir().getAbsolutePath();
         return Environment.getExternalStorageDirectory().getAbsolutePath();
     }
 
@@ -296,4 +382,11 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
         }
     }
 
+}
+
+class OBBFileInfo {
+    public Boolean isMain;
+    public int version;
+    public String packageName;
+    public String fullpath;
 }

@@ -14,7 +14,9 @@ class AndroidExpansion {
     static var _getMainFile:Dynamic;
     static var _getPackageName:Dynamic;
     static var _getLocalStoragePath:Dynamic;
+    static var _findBestPathToUnzip:Dynamic;
     static var _setVersion:Dynamic;
+    static var _setSpaceNeeded:Dynamic;
     static var _getAPKVersion:Dynamic;
     static var _setBytes:Dynamic;
     static var _setKey:Dynamic;
@@ -33,6 +35,11 @@ class AndroidExpansion {
         initJNI();
         version = v;
         _setVersion(v);
+    }
+
+    public static function setSpaceNeeded(v:Int):Void {
+        initJNI();
+        _setSpaceNeeded(v);
     }
 
     public static function getAPKVersion():Int {
@@ -82,6 +89,11 @@ class AndroidExpansion {
         return _getLocalStoragePath();
     }
 
+    public static function findBestPathToUnzip():String {
+        initJNI();
+        return _findBestPathToUnzip();
+    }
+
     public static function askExternalStoragePermissions(rationale:String):Void {
         initJNI();
         _askExternalStoragePermissions(rationale);
@@ -107,8 +119,10 @@ class AndroidExpansion {
 
             _getPackageName = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "getPackageName", "()Ljava/lang/String;");
             _getLocalStoragePath = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "getLocalStoragePath", "()Ljava/lang/String;");
+            _findBestPathToUnzip = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "findBestPathToUnzip", "()Ljava/lang/String;");
 
             _setVersion = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setVersion", "(I)V");
+            _setSpaceNeeded = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setSpaceNeeded", "(I)V");
             _getAPKVersion = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "getAPKVersion", "()I");
             _setBytes = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setBytes", "(J)V");
             _setKey = JNI.createStaticMethod("com/thomasuster/androidExpansion/Expansion", "setKey", "(Ljava/lang/String;)V");
