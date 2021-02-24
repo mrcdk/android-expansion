@@ -168,8 +168,13 @@ public class Expansion extends Extension implements EasyPermissions.PermissionCa
         Vector<OBBFileInfo> result = new Vector<OBBFileInfo>();
         File[] dirs = mainContext.getObbDirs();
         for(File dir : dirs) {
-            if(dir.exists()) {
-                for(File file : dir.listFiles()) {
+            if(dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles();
+                if(files == null) {
+                    System.out.println("Expansion.findObbFiles() the directory '" + dir.toString() + "' can't list files?");
+                    continue;
+                }
+                for(File file : files) {
                     Matcher matcher = obbnamePattern.matcher(file.getName());
                     if(!matcher.matches()) continue;
                     
